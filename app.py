@@ -25,6 +25,7 @@ publish_result_file = os.path.join(os.getcwd(), config_getter.get_config(key="pu
 
 # 文章实体
 article = None
+# 发布列表
 publish_list = None
 
 
@@ -86,11 +87,6 @@ def file_parsing():
         c_logger.error("文件【{}】解析异常".format(website_config_json))
 
     return temp_article, temp_publish_list
-
-
-# 浏览器初始化
-def init_browser():
-    return asyncio.get_event_loop().run_until_complete(browser_utils.init_browser())
 
 
 if __name__ == '__main__':
