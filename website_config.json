@@ -1,0 +1,31 @@
+{
+  "website_configs": [
+    {
+      "publish_class": "JueJinPublish",
+      "website_name": "掘金",
+      "write_page_url": "https://juejin.cn/editor/drafts/new?v=2",
+      "login_url": "https://juejin.cn/",
+      "account": "xxx",
+      "password": "xxx",
+      "is_publish": false
+    },
+    {
+      "publish_class": "CSDNPublish",
+      "website_name": "CSDN博客",
+      "write_page_url": "https://editor.csdn.net/md/?not_checkout=1",
+      "login_url": "https://passport.csdn.net/newlogin?code=mobile",
+      "account": "xxx",
+      "password": "xxx",
+      "is_publish": true
+    },
+    {
+      "publish_class": "JueJinPublish",
+      "website_name": "51CTO博客",
+      "write_page_url": "https://blog.51cto.com/blogger/publish",
+      "login_url": "https://home.51cto.com/index",
+      "account": "xxx",
+      "password": "xxx",
+      "is_publish": false
+    }
+  ]
+}
