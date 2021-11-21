@@ -138,7 +138,7 @@ class JueJinPublish(Publish):
         title_input = await self.page.Jx("//input[@class='title-input title-input']")
         await title_input[0].type(self.article.title)
 
-        # 内容部分不是纯文本输入，点击选中，然后复制粘贴一波~
+        # 填充内容部分
         content_input = await self.page.Jx("//div[@class='CodeMirror-scroll']")
         await content_input[0].click()
         cp_utils.set_copy_text(self.article.md_content)
