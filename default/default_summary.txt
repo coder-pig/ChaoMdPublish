@@ -1,3 +1,4 @@
-Android 3.0 (API 11) 为了更好地兼容平板，加入了Fragment，而想让低版本的系统也能用上，需要做一个 向下兼容，于是Android团队推出了Android Support Library。
-
-老Android们熟知的下述库 (v后面的数字代表 最低兼容API版本，如4对应Android 1.6) 都属于Android Support Library
+关于Git的使用总结以前已经写过一篇文章了：小猪的Git使用总结， 
+应付日常开发基本够用了，但在实际开发中，会遇到各种各样的问题。 
+比如我司最近把项目都从自己的Gitlab服务器上迁移到码云上，就遇到 
+了一个问题：

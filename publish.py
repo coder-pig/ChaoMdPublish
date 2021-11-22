@@ -498,3 +498,103 @@ class CTO51Publish(Publish):
             self.logger.error(e)
         finally:
             await self.page.close()
+
+
+class JianShuPublish(Publish):
+    async def check_is_login(self):
+        super().check_is_login()
+        await self.page.goto(self.login_url, options={'timeout': 60000})
+        await asyncio.sleep(1)
+        if self.page.url == self.login_url:
+            self.logger.info("未登录...")
+            self.is_login = False
+        else:
+            self.logger.info("处于登录状态...")
+            self.is_login = True
+        await self.page.close()
+
+    async def auto_login(self):
+        super().auto_login()
+        try:
+            await self.page.goto(self.login_url, options={'timeout': 60000})
+            await asyncio.sleep(2)
+            input_account = await self.page.Jx("//input[@id='session_email_or_mobile_number']")
+            await input_account[0].type(self.account)
+            input_password = await self.page.Jx("//input[@id='session_password']")
+            await input_password[0].type(self.password)
+            input_login = await self.page.Jx("//button[@class='sign-in-button']")
+            await input_login[0].click()
+            # 简书验证有两步，除了点击文字验证码外，还有短线验证码，所以这里验证两次
+            await self.page.waitForXPath("//button[@class='sign-in-button']", {'hidden': True, 'timeout': 30000})
+            await asyncio.sleep(5)
+            await self.page.waitForXPath("//button[@class='sign-in-button']", {'hidden': True, 'timeout': 30000})
+            self.logger.info("用户验证成功...")
+            self.is_login = True
+        except errors.TimeoutError:
+            self.logger.info("用户验证失败...")
+            self.logger.error("登录超时，请重试...")
+            self.is_login = False
+        except Exception as e:
+            self.logger.error(e)
+            self.is_login = False
+
+    async def load_write_page(self):
+        super().load_write_page()
+        await self.page.goto(self.write_page_url, options={'timeout': 60000})
+        await self.page.waitForNavigation()
+        new_article = await self.page.Jx("//i[@class='fa fa-plus-circle']/parent::div")
+        await new_article[0].click()
+        await asyncio.sleep(1)
+        await self.fill_content()
+
+    async def fill_content(self):
+        # 设置标题
+        input_title = await self.page.Jx("//textarea/preceding-sibling::input")
+        await input_title[0].click()
+        await cp_utils.hot_key(self.page, "Control", "KeyA")
+        await self.page.keyboard.press("Backspace")
+        await asyncio.sleep(1)
+        await input_title[0].type(self.article.title)
+        await asyncio.sleep(1)
+
+        # 内容部分不是纯文本输入，点击选中，然后复制粘贴一波~
+        content_input = await self.page.Jx("//textarea")
+        await content_input[0].click()
+        cp_utils.set_copy_text(self.article.md_content)
+        await cp_utils.hot_key(self.page, "Control", "KeyA")
+        await self.page.keyboard.press("Backspace")
+        await asyncio.sleep(1)
+        await cp_utils.hot_key(self.page, "Control", "KeyV")
+        await asyncio.sleep(2)
+        await self.fill_else()
+
+    async def fill_else(self):
+        super().fill_else()
+        await self.publish_article()
+
+    async def publish_article(self):
+        super().publish_article()
+        # 发布文章
+        publish_article = await self.page.Jx("//a[@data-action='publicize']")
+        await publish_article[0].click()
+        await asyncio.sleep(1)
+        await self.deal_result()
+
+    async def deal_result(self):
+        super().deal_result()
+        try:
+            await self.page.waitForXPath("//a[contains(text(), '发布成功')]", {'visible': 'visible', 'timeout': 3000})
+            article_node = await self.page.Jx("//a[contains(text(), '发布成功')]")
+            article_url = await (await article_node[0].getProperty('href')).jsonValue()
+            if article_url is not None:
+                self.logger.info("文章发布成功╰(*°▽°*)╯，链接：{}".format(article_url))
+            else:
+                self.logger.info("文章发布失败 o(╥﹏╥)o")
+        except errors.TimeoutError:
+            if self.write_page_url in self.page.url:
+                self.logger.info("超过每天发布上限(2篇)，文章发布失败 o(╥﹏╥)o")
+        except Exception as e:
+            self.logger.info("文章发布失败 o(╥﹏╥)o")
+            self.logger.error(e)
+        finally:
+            await self.page.close()

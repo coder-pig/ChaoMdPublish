@@ -7,8 +7,7 @@
       "login_url": "https://juejin.cn/",
       "account": "",
       "password": "",
-      "is_publish": false,
-      "is_login": false
+      "is_publish": false
     },
     {
       "publish_class": "CSDNPublish",
@@ -17,8 +16,7 @@
       "login_url": "https://passport.csdn.net/newlogin?code=mobile",
       "account": "",
       "password": "",
-      "is_publish": true,
-      "is_login": false
+      "is_publish": true
     },
     {
       "publish_class": "JueJinPublish",
@@ -27,8 +25,16 @@
       "login_url": "https://home.51cto.com/index",
       "account": "",
       "password": "",
-      "is_publish": false,
-      "is_login": false
+      "is_publish": false
+    },
+    {
+      "publish_class": "JianShuPublish",
+      "website_name": "简书",
+      "write_page_url": "https://www.jianshu.com/writer",
+      "login_url": "https://www.jianshu.com/sign_in",
+      "account": "",
+      "password": "",
+      "is_publish": false
     }
   ]
 }
