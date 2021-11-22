@@ -537,6 +537,8 @@ class JianShuPublish(Publish):
         except Exception as e:
             self.logger.error(e)
             self.is_login = False
+        finally:
+            await self.page.close()
 
     async def load_write_page(self):
         super().load_write_page()
@@ -598,3 +600,70 @@ class JianShuPublish(Publish):
             self.logger.error(e)
         finally:
             await self.page.close()
+
+
+class ZhiHuPublish(Publish):
+    async def check_is_login(self):
+        super().check_is_login()
+        await self.page.goto(self.login_url, options={'timeout': 60000})
+        await asyncio.sleep(1)
+        if self.page.url == self.login_url:
+            self.logger.info("未登录...")
+            self.is_login = False
+        else:
+            self.logger.info("处于登录状态...")
+            self.is_login = True
+        await self.page.close()
+
+    async def auto_login(self):
+        super().auto_login()
+        await self.page.goto(self.login_url, options={'timeout': 60000})
+        try:
+            # 知乎使用账号密码登录也会触发反爬机制，用App扫码登录先吧...
+            # await asyncio.sleep(2)
+            # password_login = await self.page.Jx("//div[text()='密码登录']")
+            # await password_login[0].click()
+            # input_account = await self.page.Jx("//input[@name='username']")
+            # await input_account[0].type(self.account)
+            # input_password = await self.page.Jx("//input[@name='password']")
+            # await input_password[0].type(self.password)
+            # input_login = await self.page.Jx("//button[text()='登录']")
+            # await input_login[0].click()
+            # await asyncio.sleep(2)
+            # # 可能会有验证，等待登录按钮小时
+            # await self.page.waitForXPath("//button[text()='登录']", {'hidden': True, 'timeout': 60000})
+            # self.logger.info("用户验证成功...")
+            qr_code = await self.page.Jx("//div[@aria-label='二维码图片']")
+            await qr_code[0].click()
+            self.logger.info("等待用户扫码...")
+            await self.page.waitForXPath("//span[text()='社交帐号登录']", {'hidden': True, 'timeout': 60000})
+            self.logger.info("用户验证成功...")
+            self.is_login = True
+        except errors.TimeoutError:
+            self.logger.info("用户验证失败...")
+            self.logger.error("登录超时，请重试...")
+            self.is_login = False
+        except Exception as e:
+            self.logger.error(e)
+            self.is_login = False
+        finally:
+            await self.page.close()
+
+    async def load_write_page(self):
+        super().load_write_page()
+        await asyncio.sleep(2)
+        await self.page.goto(self.write_page_url, options={'timeout': 60000})
+        i_know = await self.page.Jx("//button[text()='我知道了']")
+        if i_know is not None:
+            await i_know.click()
+        await self.fill_content()
+
+    async def fill_content(self):
+        super().fill_content()
+        import_document = await self.page.Jx("//button[@aria-label='文档导入']")
+        await import_document[0].click()
+        sub_import_document = await self.page.Jx("//button[@aria-label='文档导入']")
+        await sub_import_document[1].click()
+        # 文档导入
+        upload_cover = await self.page.Jx("//input[@type='file' and contains(@accept, 'md')]")
+        await upload_cover[0].uploadFile(self.article.md_file)

@@ -35,6 +35,15 @@
       "account": "",
       "password": "",
       "is_publish": false
+    },
+    {
+      "publish_class": "ZhiHuPublish",
+      "website_name": "简书",
+      "write_page_url": "https://www.jianshu.com/writer",
+      "login_url": "https://www.zhihu.com/signin",
+      "account": "",
+      "password": "",
+      "is_publish": false
     }
   ]
 }
