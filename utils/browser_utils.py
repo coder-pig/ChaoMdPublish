@@ -20,7 +20,7 @@ launch_args = [
     "--disable-infobars",  # 隐藏信息栏
     default_ua,
     "--log-level=3",  # 日志等级
-    ""
+    "--start-maximized"  # 窗口最大化模式
 ]
 
 
@@ -41,7 +41,6 @@ async def prevent_web_driver_check(page):
 
 # 启动浏览器
 async def init_browser(headless=False):
-    launcher.DEFAULT_ARGS.remove("--enable-automation")
     return await launch({'headless': headless,
                          'args': launch_args,
                          'userDataDir': './userData',

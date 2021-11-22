@@ -18,7 +18,7 @@ from utils import cp_utils
 
 class Publish:
     def __init__(self, website_name=None, write_page_url=None, login_url=None,
-                 account=None, password=None, is_publish=True, page=None, article=None):
+                 account=None, password=None, is_publish=True, page=None, article=None, is_login=False):
         """ 抽取发布文章的公有属性
 
         Args:
@@ -29,6 +29,7 @@ class Publish:
             password: 密码
             is_publish: 是否发布，默认为True
             page: Pyppeteer 的 Page实例
+            is_login: 是否处于登录状态
         """
         self.website_name = website_name
         self.write_page_url = write_page_url
@@ -40,6 +41,7 @@ class Publish:
         self.article = article
         self.logger = logging.getLogger(self.website_name)
         self.logger.setLevel(logging.INFO)
+        self.is_login = False
 
     def to_dict(self):
         return {
@@ -49,24 +51,26 @@ class Publish:
             'account': self.account,
             'password': self.password,
             'is_publish': self.is_publish,
+            'is_login': self.is_login,
         }
 
-    # 传入Page和Article
-    def set_page(self, page, article):
-        self.page = page
+    def set_article(self, article=None):
         self.article = article
 
-    # 加载发布页
-    def load_write_page(self):
-        self.logger.info("加载写文章页：{}".format(self.write_page_url))
+    def set_page(self, page):
+        self.page = page
 
     # 检查登录状态
-    def check_login_status(self):
-        self.logger.info("检查登录状态...")
+    def check_is_login(self):
+        self.logger.info("检查是否登录...")
 
     # 自动登录
     def auto_login(self):
         self.logger.info("开始自动登录：{}".format(self.login_url))
+
+    # 加载发布页
+    def load_write_page(self):
+        self.logger.info("加载写文章页：{}".format(self.write_page_url))
 
     # 内容填充
     def fill_content(self):
@@ -86,22 +90,20 @@ class Publish:
 
 
 class JueJinPublish(Publish):
-    async def load_write_page(self):
-        super().load_write_page()
-        await self.page.goto(self.write_page_url, options={'timeout': 60000})
-        await asyncio.sleep(1)
-        await self.check_login_status()
-
-    async def check_login_status(self):
-        super().check_login_status()
+    async def check_is_login(self):
+        super().check_is_login()
         try:
-            await self.page.waitForXPath("//nav//div[@class='toggle-btn']", {'visible': 'visible', 'timeout': 3000})
+            await self.page.goto(self.write_page_url, options={'timeout': 60000})
+            await asyncio.sleep(1)
+            await self.page.waitForXPath("//nav/div[@class='toggle-btn']", {'visible': 'visible', 'timeout': 3000})
             self.logger.info("处于登录状态...")
-            await self.fill_content()
+            self.is_login = True
         except errors.TimeoutError as e:
-            self.logger.warning(e)
-            self.logger.info("未登录，执行自动登录...")
-            await self.auto_login()
+            self.logger.error(e)
+            self.logger.info("未登录...")
+            self.is_login = False
+        finally:
+            await self.page.close()
 
     async def auto_login(self):
         super().auto_login()
@@ -122,14 +124,21 @@ class JueJinPublish(Publish):
             # 接着超时等待登录按钮消失，提示用户可能要进行登录验证
             await self.page.waitForXPath("//button[@class='login-button']", {'hidden': True, 'timeout': 60000})
             self.logger.info("用户验证成功...")
-            await self.load_write_page()
+            self.is_login = True
         except errors.TimeoutError:
             self.logger.info("用户验证失败...")
-            self.logger.error("登录超时")
-            await self.page.close()
+            self.logger.error("登录超时，请重试...")
+            self.is_login = False
         except Exception as e:
-            pass
             self.logger.error(e)
+            self.is_login = False
+            input()
+
+    async def load_write_page(self):
+        super().load_write_page()
+        await self.page.goto(self.write_page_url, options={'timeout': 60000})
+        await asyncio.sleep(2)
+        await self.fill_content()
 
     async def fill_content(self):
         super().fill_content()
@@ -146,7 +155,7 @@ class JueJinPublish(Publish):
         await cp_utils.hot_key(self.page, "Control", "KeyV")
 
         # 掘金会进行图片压缩处理，要等一下下再进行后续处理
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
 
         # 选择Markdown主题和代码高亮样式
         md_theme = await self.page.Jx("//div[@bytemd-tippy-path='16']")
@@ -193,6 +202,7 @@ class JueJinPublish(Publish):
         # 添加封面
         upload_cover = await self.page.Jx("//input[@type='file']")
         await upload_cover[0].uploadFile(self.article.cover_file)
+        await asyncio.sleep(2)
 
         # 填充摘要
         summary_textarea = await self.page.Jx("//textarea[@class='byte-input__textarea']")
@@ -217,30 +227,23 @@ class JueJinPublish(Publish):
             self.logger.info("文章发布成功╰(*°▽°*)╯，链接：{}".format(article_url))
         else:
             self.logger.info("文章发布失败 o(╥﹏╥)o")
-        await self.page.close()
 
 
 class CSDNPublish(Publish):
-    async def load_write_page(self):
-        super().load_write_page()
-        await self.page.goto(self.write_page_url, options={'timeout': 60000})
-        # CSDN未登录会自动跳转，延时判断下当前url是否为写文章URL即可
+    async def check_is_login(self):
+        super().check_is_login()
+        await self.page.goto(self.login_url, options={'timeout': 30000})
         await asyncio.sleep(2)
-        await self.check_login_status()
-
-    async def check_login_status(self):
-        super().check_login_status()
-        cur_url = self.page.url
-        if cur_url == self.write_page_url:
-            self.logger.info("处于登录状态...")
-            await self.fill_content()
+        if self.page.url == self.login_url:
+            self.logger.info("未登录...")
+            self.is_login = False
         else:
-            self.logger.info("未登录，执行自动登录...")
-            await self.auto_login()
+            self.logger.info("处于登录状态...")
+            self.is_login = True
+        await self.page.close()
 
     async def auto_login(self):
         super().auto_login()
-
         # CSDN账号密码登录很容易触发防火墙验证，试过延时输入、模拟人输入不行，猜测是有啥回调的JS，先放一放，采用微信扫码登录吧...
         # password_login = await self.page.Jx("//span[text()='密码登录']")
         # await password_login[0].click()
@@ -250,22 +253,34 @@ class CSDNPublish(Publish):
         # login_bt = await self.page.Jx("//button[@class='base-button']")
         # await login_bt[0].click()
         # self.logger.info("等待用户验证...")
+        try:
+            await self.page.goto(self.login_url, options={'timeout': 60000})
+            self.logger.info("等待扫码登录...")
+            # 超时等待登录按钮消失
+            await self.page.waitForXPath("//button[@class='base-button']", {'hidden': True, 'timeout': 60000})
+            self.logger.info("用户验证成功...")
+            await asyncio.sleep(2)
+            if self.page.url == self.login_url:
+                self.is_login = False
+            else:
+                self.is_login = True
+        except Exception as e:
+            self.logger.error(e)
+            self.is_login = False
+        finally:
+            await self.page.close()
 
-        self.logger.info("等待扫码登录...")
-        # 超时等待登录按钮消失
-        await self.page.waitForXPath("//button[@class='base-button']", {'hidden': True, 'timeout': 60000})
-        self.logger.info("用户验证成功...")
-        # 判断当前页面是否为文章编写页，是直接填充内容，否则跳转到文章编写页
-        cur_url = self.page.url
-        if cur_url == self.write_page_url:
-            await self.fill_content()
-        else:
-            await self.load_write_page()
+    async def load_write_page(self):
+        super().load_write_page()
+        await self.page.goto(self.write_page_url, options={'timeout': 60000})
+        await asyncio.sleep(2)
+        await self.fill_content()
 
     async def fill_content(self):
         super().fill_content()
         # 设置标题
         title_input = await self.page.Jx("//div[@class='article-bar__input-box']/input")
+        await title_input[0].click()
         await title_input[0].type(self.article.title)
 
         # 内容部分不是纯文本输入，点击选中，然后复制粘贴一波~
