@@ -132,7 +132,6 @@ class JueJinPublish(Publish):
         except Exception as e:
             self.logger.error(e)
             self.is_login = False
-            input()
 
     async def load_write_page(self):
         super().load_write_page()
@@ -363,3 +362,139 @@ class CSDNPublish(Publish):
         else:
             self.logger.info("文章发布失败 o(╥﹏╥)o")
         await self.page.close()
+
+
+class CTO51Publish(Publish):
+    async def check_is_login(self):
+        super().check_is_login()
+        await self.page.goto(self.login_url, options={'timeout': 30000})
+        await asyncio.sleep(1)
+        if self.page.url == self.login_url:
+            self.logger.info("未登录...")
+            self.is_login = False
+        else:
+            self.logger.info("处于登录状态...")
+            self.is_login = True
+        await self.page.close()
+
+    async def auto_login(self):
+        super().auto_login()
+        try:
+            await self.page.goto(self.login_url, options={'timeout': 60000})
+            await asyncio.sleep(2)
+            login_type = await self.page.Jx("//div[@title='密码登录']")
+            await login_type[0].click()
+            await asyncio.sleep(1)
+            password_login = await self.page.Jx("//span[text()='密码登录']")
+            await password_login[0].click()
+            input_account = await self.page.Jx("//input[@id='loginform-username']")
+            await input_account[0].type(self.account)
+            input_password = await self.page.Jx("//input[@id='loginform-password']")
+            await input_password[0].type(self.password)
+            input_login = await self.page.Jx("//input[@value='登 录']")
+            await input_login[0].click()
+            await asyncio.sleep(1)
+            # 超时等待登录按钮消失
+            await self.page.waitForXPath("//input[@value='登 录']", {'hidden': True, 'timeout': 60000})
+            self.logger.info("用户验证成功...")
+            self.is_login = True
+        except Exception as e:
+            self.logger.error(e)
+            self.is_login = False
+        finally:
+            await self.page.close()
+
+    async def load_write_page(self):
+        super().load_write_page()
+        await self.page.goto(self.write_page_url, options={'timeout': 60000})
+        await asyncio.sleep(1)
+        await self.fill_content()
+
+    async def fill_content(self):
+        super().fill_content()
+
+        # 设置标题
+        title_input = await self.page.Jx("//input[@id='title']")
+        await title_input[0].click()
+        await title_input[0].type(self.article.title)
+
+        # 内容部分不是纯文本输入，点击选中，然后复制粘贴一波~
+        content_input = await self.page.Jx("//textarea")
+        await content_input[0].click()
+        await content_input[0].click()
+        cp_utils.set_copy_text(self.article.md_content)
+        await cp_utils.hot_key(self.page, "Control", "KeyA")
+        await self.page.keyboard.press("Backspace")
+        await asyncio.sleep(1)
+        await cp_utils.hot_key(self.page, "Control", "KeyV")
+        # 点击发布文章
+        publish_bt = await self.page.Jx("//button[@class=' edit-submit']")
+        await publish_bt[0].hover()
+        await publish_bt[0].click()
+        await self.fill_else()
+
+    async def fill_else(self):
+        super().fill_else()
+        await asyncio.sleep(2)
+        # 先默认选中移动分类，后续再优化成动态配置
+        category_select_item = await self.page.Jx("//span[text()='{}']/parent::div".format("移动开发"))
+        await category_select_item[0].click()
+        await asyncio.sleep(1)
+        android_item = await self.page.Jx("//span[text()='{}']/parent::div".format("Android"))
+        await android_item[0].click()
+        # 添加文章标签，得先干掉默认的，然后一个个输入回车，而且是动态变化的
+        while True:
+            tag_curs = await self.page.Jx("//i[@class='iconeditor editorcancel']/parent::a")
+            if tag_curs is not None and len(tag_curs) > 0:
+                await tag_curs[0].click()
+            else:
+                break
+        tag_input = await self.page.Jx("//input[@id='tag-input']/parent::div")
+        await tag_input[0].click()
+
+        for tag in self.article.tags:
+            await self.page.keyboard.type(tag)
+            await self.page.keyboard.press(',')
+
+        # 输入摘要
+        summary = await self.page.Jx("//textarea[@id='abstractData']")
+        await summary[0].click()
+        cp_utils.set_copy_text(self.article.summary)
+        await cp_utils.hot_key(self.page, "Control", "KeyA")
+        await self.page.keyboard.press("Backspace")
+        await asyncio.sleep(1)
+        await cp_utils.hot_key(self.page, "Control", "KeyV")
+
+        # 选择封面
+        single_pic = await self.page.Jx("//input[@class='img_type' and @value='1']")
+        await single_pic[0].click()
+        upload_cover = await self.page.Jx("//div[@class='item upload-img']//input[@type='file']")
+        await upload_cover[0].uploadFile(self.article.cover_file)
+        await asyncio.sleep(1)
+        await self.publish_article()
+
+    async def publish_article(self):
+        super().publish_article()
+        publish_btn = await self.page.Jx("//button[@class='release']")
+        await publish_btn[0].click()
+        await asyncio.sleep(5)
+        await self.deal_result()
+
+    async def deal_result(self):
+        super().deal_result()
+        try:
+            await self.page.waitForXPath("//a[text()='查看文章']", {'visible': 'visible', 'timeout': 3000})
+            article_node = await self.page.Jx("//a[text()='查看文章']")
+            article_url = await (await article_node[0].getProperty('href')).jsonValue()
+            if article_url is not None:
+                self.logger.info("文章发布成功╰(*°▽°*)╯，链接：{}".format(article_url))
+            else:
+                self.logger.info("文章发布失败 o(╥﹏╥)o")
+        except errors.TimeoutError as te:
+            self.logger.info("文章发布失败 o(╥﹏╥)o")
+            self.logger.error(te)
+        except Exception as e:
+            self.logger.info("文章发布失败 o(╥﹏╥)o")
+            self.logger.error(e)
+        finally:
+            await self.page.close()
