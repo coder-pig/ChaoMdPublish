@@ -226,5 +226,11 @@ def get_str_md5(content):
     return m.hexdigest()
 
 
+def copy_file(src_file, dst_file):
+    f_path, f_name = os.path.split(dst_file)
+    is_dir_existed(f_path)
+    shutil.copyfile(src_file, dst_file)
+
+
 if __name__ == '__main__':
     print(get_str_md5('test'))
