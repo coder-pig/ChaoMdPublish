@@ -81,7 +81,7 @@ pip install -r requirements.txt
 
 **Tips**：只需登录一次，登录状态会保存，运行效果图如下 (具体 → [演示视频][7])：
 
-![][8]
+![](./res/xg.gif)
 
 
 因时间有限，工具还算粗糙，笔者目前用着还行，后续会把一些bug修复下，弄个图形用户页面，让其更好更易用，谢谢~
@@ -94,4 +94,3 @@ pip install -r requirements.txt
   [5]: http://static.zybuluo.com/coder-pig/7bcopj39x71f8l02ovt831h9/hghgz.png
   [6]: http://static.zybuluo.com/coder-pig/q4im1s5lchooodh4wpmvoivs/hgjfj.png
   [7]: https://www.bilibili.com/video/BV1ZY411x7Cv/
-  [8]: http://static.zybuluo.com/coder-pig/k10nymdue58horkiwgmeyqb7/xg2.gif
