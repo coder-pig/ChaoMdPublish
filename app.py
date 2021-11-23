@@ -54,28 +54,38 @@ def file_check():
         exit(-1)
     cp_file_utils.is_dir_existed(input_dir)
     cp_file_utils.is_dir_existed(output_dir)
+    is_generate_file = False
     # 检查相关文件是否存在，不存在生成默认文件
     if not cp_file_utils.is_dir_existed(website_config_json, False):
         c_logger.info("检测到网站配置文件不存在，自动创建...")
         cp_file_utils.copy_file(os.path.join(default_dir, config_getter.get_config(key="default_website_config_json")),
                                 website_config_json)
+        is_generate_file = True
     if not cp_file_utils.is_dir_existed(article_md, False):
         c_logger.info("检测到文章md文件不存在，自动创建...")
         cp_file_utils.copy_file(os.path.join(default_dir, config_getter.get_config(key="default_article_md")),
                                 article_md)
+        is_generate_file = True
     if not cp_file_utils.is_dir_existed(cover_pic, False):
         c_logger.info("检测到封面文件不存在，自动创建...")
         cp_file_utils.copy_file(os.path.join(default_dir, config_getter.get_config(key="default_cover_pic")),
                                 cover_pic)
+        is_generate_file = True
     if not cp_file_utils.is_dir_existed(article_config_json, False):
         c_logger.info("检测到文章配置文件不存在，自动创建...")
         cp_file_utils.copy_file(os.path.join(default_dir, config_getter.get_config(key="default_article_config_json")),
                                 article_config_json)
+        is_generate_file = True
     if not cp_file_utils.is_dir_existed(summary, False):
         c_logger.info("检测到摘要文件不存在，自动创建...")
         cp_file_utils.copy_file(os.path.join(default_dir, config_getter.get_config(key="default_summary")),
                                 summary)
-    c_logger.info("文件完整性校验完毕！！！")
+        is_generate_file = True
+    if is_generate_file:
+        c_logger.info("默认文件创建完毕，请按需填充内容后再次启动本程序...")
+        exit(0)
+    else:
+        c_logger.info("文件完整性校验完毕！！！")
 
 
 # 文件解析
