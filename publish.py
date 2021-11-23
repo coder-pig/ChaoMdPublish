@@ -651,19 +651,86 @@ class ZhiHuPublish(Publish):
 
     async def load_write_page(self):
         super().load_write_page()
-        await asyncio.sleep(2)
         await self.page.goto(self.write_page_url, options={'timeout': 60000})
         i_know = await self.page.Jx("//button[text()='我知道了']")
-        if i_know is not None:
-            await i_know.click()
+        if i_know is not None and len(i_know) > 0:
+            await i_know[0].click()
         await self.fill_content()
 
     async def fill_content(self):
         super().fill_content()
+        # 设置标题
+        input_title = await self.page.Jx("//textarea")
+        await input_title[0].click()
+        await cp_utils.hot_key(self.page, "Control", "KeyA")
+        await self.page.keyboard.press("Backspace")
+        await asyncio.sleep(1)
+        await input_title[0].type(self.article.title)
+        await asyncio.sleep(1)
+
+        # 文档导入
         import_document = await self.page.Jx("//button[@aria-label='文档导入']")
         await import_document[0].click()
         sub_import_document = await self.page.Jx("//button[@aria-label='文档导入']")
         await sub_import_document[1].click()
-        # 文档导入
         upload_cover = await self.page.Jx("//input[@type='file' and contains(@accept, 'md')]")
         await upload_cover[0].uploadFile(self.article.md_file)
+        await asyncio.sleep(2)
+        await self.fill_else()
+
+    async def fill_else(self):
+        super().fill_else()
+        # 点击发布设置
+        publish_setting = await self.page.Jx("//div[text()='发布设置']/parent::button")
+        await publish_setting[0].click()
+        await asyncio.sleep(1)
+
+        # 添加封面
+        upload_cover = await self.page.Jx("//input[@type='file' and @class='UploadPicture-input']")
+        await upload_cover[0].uploadFile(self.article.cover_file)
+        await asyncio.sleep(1)
+
+        # 添加文章话题，先清空默认选中，再选中
+        default_tags = await self.page.Jx("//div[text()='发布设置']/following-sibling::div/div/div/div/button")
+        for tag in default_tags:
+            await tag.click()
+        await asyncio.sleep(1)
+        for tag in self.article.tags[:1]:
+            add_conversation = await self.page.Jx("//button[text()='添加话题']")
+            if add_conversation is not None and len(add_conversation) > 0:
+                await add_conversation[0].click()
+            search_conversation = await self.page.Jx("//input[@aria-label='搜索话题']")
+            if search_conversation is not None and len(search_conversation) > 0:
+                await search_conversation[0].type(tag)
+                await asyncio.sleep(1)
+            tag_button = await self.page.Jx("//button[text()='{}']".format(tag))
+            if tag_button is not None and len(tag_button) > 0:
+                await tag_button[0].click()
+        await asyncio.sleep(1)
+        await self.publish_article()
+
+    async def publish_article(self):
+        super().publish_article()
+        # 发布文章
+        publish_article = await self.page.Jx("//button[text()='发布']")
+        await publish_article[0].click()
+        await asyncio.sleep(2)
+        await self.deal_result()
+
+    async def deal_result(self):
+        super().deal_result()
+        try:
+            await self.page.waitForXPath("//span[text()='内容审核中']", {'visible': 'visible', 'timeout': 3000})
+            article_url = self.page.url
+            if article_url is not None:
+                self.logger.info("文章发布成功╰(*°▽°*)╯，链接：{}".format(article_url))
+            else:
+                self.logger.info("文章发布失败 o(╥﹏╥)o")
+        except errors.TimeoutError:
+            if self.write_page_url in self.page.url:
+                self.logger.info("未知原因发布失败 o(╥﹏╥)o")
+        except Exception as e:
+            self.logger.info("文章发布失败 o(╥﹏╥)o")
+            self.logger.error(e)
+        finally:
+            await self.page.close()

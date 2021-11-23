@@ -20,7 +20,8 @@ launch_args = [
     "--disable-infobars",  # 隐藏信息栏
     default_ua,
     "--log-level=3",  # 日志等级
-    "--start-maximized"  # 窗口最大化模式
+    "--window-size=1366,850"
+    # "--start-maximized"  # 窗口最大化模式
 ]
 
 
@@ -51,7 +52,7 @@ async def init_browser(headless=False):
 # 新建页面
 async def init_page(browser):
     page = await browser.newPage()
-    await page.setViewport({'width': 1960, 'height': 1080})
+    await page.setViewport({'width': 1366, 'height': 768})
     await page.setJavaScriptEnabled(True)
     await prevent_web_driver_check(page)
     await stealth(page)
