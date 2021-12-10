@@ -49,6 +49,11 @@ async def init_browser(headless=False):
                          'ignoreHTTPSErrors ': True})
 
 
+# 关闭浏览器
+async def close_browser(browser):
+    return await browser.close()
+
+
 # 新建页面
 async def init_page(browser):
     page = await browser.newPage()

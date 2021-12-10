@@ -132,6 +132,8 @@ class JueJinPublish(Publish):
         except Exception as e:
             self.logger.error(e)
             self.is_login = False
+        finally:
+            await self.page.close()
 
     async def load_write_page(self):
         super().load_write_page()
